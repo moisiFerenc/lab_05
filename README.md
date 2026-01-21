@@ -1,65 +1,57 @@
-# Lab 05 — Pipe + Condition Variable + SIGINT (Lab 04.5)
+# Lab 05 — Egyszerű Pipe + Thread + Ctrl+C
 
-Ez a mini-labor arra szolgál, hogy a vizsga előtt gyakorold azokat a témákat, amik a lab_02/03/04-ben nem (vagy nem elég direkt módon) jelentek meg:
+Ez a labor **szándékosan egyszerű**. Nem kell `man`, nem kell Valgrind.
 
-- `pipe()` + `fork()` (alap IPC, `read`/`write`, fd-k lezárása)
-- `pthread_cond_t` (producer–consumer, busy-wait nélkül)
-- `SIGINT` (Ctrl+C) és "szép" leállítás (thread join + child process kill/wait)
+## Mit tanulsz?
 
-## Feladat röviden
+1) **pipe()**: két folyamat között adatküldés
+2) **pthread_cond_t**: a szál tud "aludni", amíg nincs új adat (nincs busy-wait)
+3) **SIGINT (Ctrl+C)**: kulturált leállítás
 
-1. A szülő folyamat létrehoz egy pipe-ot, majd `fork()`-ol.
-2. A gyerek folyamat 1 másodpercenként generál egy sort és a pipe-ba írja (pl. `AAPL 150`).
-3. A szülő a pipe-ból olvas, és egy **egyelemű mailbox-ba** teszi az utolsó sort.
-4. Egy worker thread `pthread_cond_wait`-tel vár, amíg van új sor, majd feldolgozza (kiírja).
-5. Ctrl+C (SIGINT) esetén a program leáll:
-   - `running = 0`
-   - child process leállítása (`kill` + `waitpid`)
-   - worker felébresztése (`pthread_cond_broadcast`), `pthread_join`
-   - fd-k és szinkron primitívek takarítása
+## A program felépítése (emberi nyelven)
 
-## Követelmények
+- **Szülő folyamat (parent)**
+  - létrehoz egy pipe-ot
+  - `fork()`-kal elindít egy **gyerek** folyamatot
+  - a pipe-ból olvas
+  - az olvasott sort átadja a worker szálnak
 
-- Busy-wait tilos (nincs `while(empty){}` pörgés).
-- `pthread_cond_wait`-et **while** feltétellel használd (spurious wakeup).
-- Pipe végeket helyesen zárd le (`close`).
+- **Gyerek folyamat (child)**
+  - 1 mp-enként küld egy sort a pipe-ba
 
-## Build & Run (Ubuntu/WSL)
+- **Worker szál (thread)**
+  - vár, amíg van új sor
+  - ha kap sort, kiírja
+
+- **Ctrl+C**
+  - a program leállítja a gyerek folyamatot
+  - felébreszti a workert
+  - megvárja, míg minden befejeződik
+
+## Futtatás (Ubuntu/WSL)
+
+Telepítés (ha kell):
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential valgrind
+sudo apt install -y build-essential
+```
 
+Fordítás és futtatás:
+
+```bash
 make
-make run
+./lab05
 ```
 
-Valgrind:
+Leállítás: **Ctrl+C**
 
-```bash
-make valgrind
-```
+## Mit kell beadni?
 
-Hasznos man oldalak:
+- A kész `main.c`
 
-```bash
-man 2 pipe
-man 2 fork
-man 2 read
-man 2 write
-man 3 pthread_cond_wait
-man 7 signal
-```
+## Feladat (nagyon rövid)
 
----
-
-## Leadandó
-
-- A kész `main.c` (a TODO-k kitöltve)
-
-## Tipp
-
-Ha nem működik a leállítás:
-- Nézd meg, hogy Ctrl+C-re tényleg átáll-e a `running` flag.
-- A worker szálat ébreszted-e `pthread_cond_broadcast`-tel.
-- A child process megkapja-e a SIGTERM-et.
+1. Indítsd el.
+2. Figyeld meg, hogy a worker soronként kap adatot.
+3. Nyomj Ctrl+C-t, és nézd meg, hogy kiírja: `shutdown complete`.  
