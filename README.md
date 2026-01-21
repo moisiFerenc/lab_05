@@ -166,13 +166,6 @@ Helyes kimenet (Ctrl+C utan):
 
 ---
 
-## Megoldas
-
-A `solution/main.c` fajlban megtalalhato a teljes megoldas.
-Csak akkor nezd meg, ha tenyleg elakadtal!
-
----
-
 ## Leadando
 
 - A kitoltott `main.c` fajl
